@@ -5,7 +5,7 @@ require("colors");
 module.exports = {
     data: new SlashCommandBuilder()
         .setName("arma")
-        .setDMPermission(true)
+        .setDMPermission(false) // Evita que el comando se use en DMs
         .setDescription("arma server info"),
     category: "game",
 
@@ -14,7 +14,11 @@ module.exports = {
      * @param {ChatInputCommandInteraction} interaction
      */
     async execute(client, interaction, color) {
-        const { user, channel } = interaction;
+        const { channel, guildId } = interaction;
+
+        if (!guildId) {
+            return interaction.reply({ content: "❌ Este comando solo puede usarse en servidores.", ephemeral: true });
+        }
 
         try {
             console.log("Ejecutando comando /arma");
@@ -26,34 +30,24 @@ module.exports = {
             });
 
             // Crear el embed inicial
-            const embed = armaServerEmbed(info || null);
+            let embed = armaServerEmbed(info || null);
 
             // Enviar el mensaje y obtener el mensaje enviado
-            await interaction.reply({ embeds: [embed] });
+            const message = await interaction.reply({ embeds: [embed], fetchReply: true });
             console.log("Mensaje enviado correctamente.");
 
-            const message = await interaction.fetchReply().catch(err => {
-                console.error("Error obteniendo el mensaje enviado:", err);
-                return null;
-            });
-
-            if (!message) {
-                console.error("No se pudo obtener el mensaje enviado.");
-                return;
-            }
-
-            console.log("Mensaje obtenido:", message);
-
-            // Guardar los IDs
-            const channelId = channel?.id;
-            const messageId = message?.id;
-
-            if (!channelId || !messageId) {
-                console.error("No se pudieron obtener los IDs del canal o mensaje.");
-                return;
-            }
-
-            console.log(`Mensaje enviado en canal ID: ${channelId} con mensaje ID: ${messageId}`);
+            // Iniciar la actualización automática cada 30 segundos
+            setInterval(async () => {
+                console.log("Actualizando mensaje...");
+                let updatedInfo = await getArmaServer().catch(e => {
+                    console.error("Error obteniendo actualización del servidor:", e);
+                    return null;
+                });
+                let updatedEmbed = armaServerEmbed(updatedInfo || null);
+                await message.edit({ embeds: [updatedEmbed] }).catch(err => {
+                    console.error("Error actualizando el mensaje:", err);
+                });
+            }, 1000); // Actualiza cada 30 segundos
 
         } catch (error) {
             console.error("Error ejecutando el comando:", error);
