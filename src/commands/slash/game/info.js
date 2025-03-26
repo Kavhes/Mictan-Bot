@@ -55,8 +55,7 @@ module.exports = {
                     }
             
                     // Verificar que el bot tiene permisos para ver y editar mensajes en el canal
-                    const botMember = await interaction.guild.members.fetch(client.user.id);
-                    const botPermissions = channel.permissionsFor(botMember);
+                    const botPermissions = channel.permissionsFor(client.user.id);
                     
                     if (!botPermissions.has("ViewChannel") || !botPermissions.has("SendMessages") || !botPermissions.has("ReadMessageHistory")) {
                         console.error("❌ Error: El bot no tiene permisos suficientes en el canal.");
@@ -77,7 +76,7 @@ module.exports = {
                 } catch (err) {
                     console.error("❌ Error en la actualización del mensaje:", err);
                 }
-            }, 30000); // Actualiza cada 30 segundos
+            }, 1000); // Actualiza cada 30 segundos
 
         } catch (error) {
             console.error("Error ejecutando el comando:", error);
