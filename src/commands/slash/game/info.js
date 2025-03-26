@@ -33,21 +33,51 @@ module.exports = {
             let embed = armaServerEmbed(info || null);
 
             // Enviar el mensaje y obtener el mensaje enviado
-            const message = await interaction.reply({ embeds: [embed], fetchReply: true });
+            await interaction.reply({ embeds: [embed] });
+            const message = await interaction.fetchReply(); // Obtener el mensaje después de responder
             console.log("Mensaje enviado correctamente.");
 
-            // Iniciar la actualización automática cada 30 segundos
             setInterval(async () => {
                 console.log("Actualizando mensaje...");
-                let updatedInfo = await getArmaServer().catch(e => {
-                    console.error("Error obteniendo actualización del servidor:", e);
-                    return null;
-                });
-                let updatedEmbed = armaServerEmbed(updatedInfo || null);
-                await message.edit({ embeds: [updatedEmbed] }).catch(err => {
-                    console.error("Error actualizando el mensaje:", err);
-                });
-            }, 1000); // Actualiza cada 30 segundos
+                try {
+                    let updatedInfo = await getArmaServer().catch(e => {
+                        console.error("Error obteniendo actualización del servidor:", e);
+                        return null;
+                    });
+            
+                    let updatedEmbed = armaServerEmbed(updatedInfo || null);
+            
+                    // Intentar obtener el canal de nuevo
+                    const channel = await client.channels.fetch(interaction.channelId).catch(() => null);
+                    if (!channel) {
+                        console.error("❌ Error: El bot no puede acceder al canal o ha sido eliminado.");
+                        return;
+                    }
+            
+                    // Verificar que el bot tiene permisos para ver y editar mensajes en el canal
+                    const botMember = await interaction.guild.members.fetch(client.user.id);
+                    const botPermissions = channel.permissionsFor(botMember);
+                    
+                    if (!botPermissions.has("ViewChannel") || !botPermissions.has("SendMessages") || !botPermissions.has("ReadMessageHistory")) {
+                        console.error("❌ Error: El bot no tiene permisos suficientes en el canal.");
+                        return;
+                    }
+            
+                    // Obtener el mensaje original
+                    const fetchedMessage = await channel.messages.fetch(message.id).catch(() => null);
+                    if (!fetchedMessage) {
+                        console.error("❌ Error: No se pudo obtener el mensaje original.");
+                        return;
+                    }
+            
+                    await fetchedMessage.edit({ embeds: [updatedEmbed] }).catch(err => {
+                        console.error("Error actualizando el mensaje:", err);
+                    });
+            
+                } catch (err) {
+                    console.error("❌ Error en la actualización del mensaje:", err);
+                }
+            }, 30000); // Actualiza cada 30 segundos
 
         } catch (error) {
             console.error("Error ejecutando el comando:", error);
